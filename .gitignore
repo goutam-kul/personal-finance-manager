@@ -1,0 +1,19 @@
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+venv/
+env/
+
+# Environment variables
+*.env
+
+# Database files
+*.db
+
+# Miscellaneous
+.DS_Store
+.idea/
+.vscode/
+

@@ -1,0 +1,18 @@
+fastapi              # Framework to build API quickly and easily 
+uvicorn[standard]    # ASGI server to run the FastAPI, required to serve the API locally
+sqlalchemy           # ORM (Object Relational Mapper) for database interactions.
+# sqlite3              # lightweight file-based database system
+pydantic             # Data validation and serialization library, validates incoming API requests 
+openai-whisper       # Text to speech model 
+torch
+torchaudio
+torchvision
+pydub
+spacy
+spacy    
+# Also run python -m spacy download en_core_web_sm explicitly 
+streamlit
+plotly
+pandas
+PyJWT
+apscheduler
