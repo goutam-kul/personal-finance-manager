@@ -2,7 +2,9 @@ import streamlit as st
 import requests
 import jwt
 import time 
-
+import av
+import tempfile
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, ClientSettings
 # API Base URL
 API_BASE_URL = "http://localhost:6000"
 METABASE_SITE_URL = "http://localhost:3000"
@@ -16,7 +18,6 @@ payload = {
   "exp": round(time.time()) + (60 * 10) # 10 minute expiration
 }
 token = jwt.encode(payload, METABASE_SECRET_KEY, algorithm="HS256")
-
 iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=true&titled=true"
 
 # Streamlit App

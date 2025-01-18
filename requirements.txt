@@ -12,7 +12,9 @@ spacy
 spacy    
 # Also run python -m spacy download en_core_web_sm explicitly 
 streamlit
+streamlit-webrtc
 plotly
 pandas
 PyJWT
 apscheduler
+python-multipart

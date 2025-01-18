@@ -3,15 +3,19 @@ import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pydantic import BaseModel
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from sqlalchemy.sql import func
 from app.models import Expense, Budget, engine
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from db.database import SessionLocal
+import whisper
 
 # Create a database session 
 router = APIRouter()
+
+# Whisper model for transcribing 
+whisper_model = whisper.load_model("base")
 
 # Pydantic modesl for request validation 
 class ExpenseInput(BaseModel):
@@ -251,3 +255,90 @@ def update_budget(category: str, request: UpdateBudget):
         raise HTTPException(status_code=400, detail=str(e))
     finally:
         session.close()
+
+
+# Transcription end point
+ACCEPTED_AUDIO_TYPE = {
+    "audio/wav": ".wav",
+    "audio/wave": ".wav",
+    "audio/x-wav": ".wav",
+    "audio/mpeg": ".mp3",
+    "audio/mp3": ".mp3",
+    "audio/mpeg3": ".mp3",
+    "audio/x-mpeg-3": ".mp3"
+}
+
+def validate_audio_file(file: UploadFile) -> bool:
+    """Validate the uploaded file's content tyep."""
+    return file.content_type in ACCEPTED_AUDIO_TYPE
+
+def get_safe_temp_filepath(filename: str) -> str:
+    """Generate a safe temporay file path."""
+    base_name = os.path.basename(filename)
+    return f"temp_{hash(base_name)}_{base_name}"
+
+@router.post("/transcribe_audio/")
+async def transcribe_audio(file: UploadFile = File(...)):
+    """
+    Transcribe an audio file using whisper.
+    
+    Args:
+        file(UploadFile): The audio file to trnscribe(.wav or .mp3)
+    
+    Returns:
+        dict: Contains the trancribed text.
+    """
+    try:
+        print(f"File received: {file.filename}")
+        print(f"Content type:  {file.content_type}")
+
+        # Validate file type
+        if not validate_audio_file(file):
+            supported_formats = ", ".join(set(ACCEPTED_AUDIO_TYPE.values()))
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid file type. Supported formats are: {supported_formats}"
+            )
+        
+        # Create a safe temporary file path
+        temp_file_path = get_safe_temp_filepath(file.filename)
+
+        try:
+            # Save the file temporarily 
+            content = await file.read()
+            with open(temp_file_path, 'wb') as temp_file:
+                temp_file.write(content)
+
+            print(f"File save at: {temp_file_path}")
+
+            # Process the audio with whisper
+            try:
+                result = whisper_model.transcribe(temp_file_path)
+                transcription = result['text']
+                print("Transcription Successful.")
+
+                return {
+                    "status":  "success",
+                    "transcription": transcription,
+                    "filename": file.filename
+                }
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+        
+        except Exception as processing_error:
+            raise HTTPException(status_code=400, detail=f"Processing Failed: {str(processing_error)}")
+        
+        finally:
+            if os.path.exists(temp_file_path):
+                try:
+                    os.remove(temp_file_path)
+                    print(f"Temporary file removed: {temp_file_path}")
+                except Exception as cleanup_error:
+                    print(f"Warning: Failed to remove temporary file.")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=f"Unexpected error: {str(e)}"
+        )
